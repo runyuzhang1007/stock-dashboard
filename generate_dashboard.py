@@ -252,12 +252,45 @@ for sym, levels in alert_cfg.items():
 alert_df = pd.DataFrame(alert_rows)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# 5. BUILD DASHBOARD
+# 5. RHINOFINANCE YOUTUBE VIDEOS
+# ══════════════════════════════════════════════════════════════════════════════
+print("\n── Fetching RhinoFinance YouTube videos ──────────────────")
+yt_videos = []
+try:
+    import re as _re
+    yt_headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    yt_r = requests.get("https://www.youtube.com/@RhinoFinance/videos", headers=yt_headers, timeout=45)
+    yt_m = _re.search(r'var ytInitialData\s*=\s*(\{.+?\});</script>', yt_r.text, _re.DOTALL)
+    yt_data = json.loads(yt_m.group(1))
+    for tab in yt_data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]:
+        tr = tab.get("tabRenderer", {})
+        if tr.get("title") == "Videos":
+            for item in tr["content"]["richGridRenderer"]["contents"]:
+                vr = item.get("richItemRenderer", {}).get("content", {}).get("videoRenderer", {})
+                if not vr: continue
+                vid_id = vr.get("videoId", "")
+                yt_videos.append({
+                    "title":     vr.get("title", {}).get("runs", [{}])[0].get("text", ""),
+                    "published": vr.get("publishedTimeText", {}).get("simpleText", ""),
+                    "views":     vr.get("viewCountText", {}).get("simpleText", "N/A"),
+                    "duration":  vr.get("lengthText", {}).get("simpleText", ""),
+                    "url":       f"https://www.youtube.com/watch?v={vid_id}",
+                })
+            break
+    print(f"  Fetched {len(yt_videos)} videos")
+except Exception as e:
+    print(f"  YouTube fetch failed: {e}")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 6. BUILD DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
 print("\n── Building dashboard ────────────────────────────────────")
 
 fig = make_subplots(
-    rows=6, cols=2,
+    rows=7, cols=2,
     subplot_titles=(
         "📈 1-Year Normalized Price Performance (Base = 100)",
         "🏆 Composite Score Ranking",
@@ -271,6 +304,8 @@ fig = make_subplots(
         "🎯 Latest Quarter EPS Surprise (%)",
         "📅 Earnings Calendar",
         "🚨 Price Alerts",
+        "🎬 事业环球财经 · RhinoFinance — Latest Videos",
+        "",
     ),
     specs=[
         [{"type": "xy"},    {"type": "xy"}],
@@ -279,10 +314,11 @@ fig = make_subplots(
         [{"type": "xy"},    {"type": "xy"}],
         [{"type": "xy"},    {"type": "xy"}],
         [{"type": "table"}, {"type": "table"}],
+        [{"type": "table", "colspan": 2}, None],
     ],
-    vertical_spacing=0.08,
+    vertical_spacing=0.07,
     horizontal_spacing=0.08,
-    row_heights=[0.22, 0.17, 0.15, 0.15, 0.17, 0.14],
+    row_heights=[0.20, 0.15, 0.13, 0.13, 0.15, 0.12, 0.12],
 )
 
 # ── Row 1 Left: 1Y performance ─────────────────────────────────────────────
@@ -458,6 +494,23 @@ fig.add_trace(go.Table(
     ),
 ), row=6, col=2)
 
+# ── Row 7: RhinoFinance YouTube (full width) ───────────────────────────────
+yt_df = pd.DataFrame(yt_videos[:15]) if yt_videos else pd.DataFrame(
+    [{"title": "No data — YouTube fetch failed", "published": "", "views": "", "duration": ""}])
+fig.add_trace(go.Table(
+    header=dict(
+        values=["<b>Published</b>", "<b>Title</b>", "<b>Views</b>", "<b>Duration</b>"],
+        fill_color="#1a1f2e", font=dict(color="#ff6b6b", size=12),
+        line_color="#30363d", align="left",
+    ),
+    cells=dict(
+        values=[yt_df["published"], yt_df["title"].str[:80], yt_df["views"], yt_df["duration"]],
+        fill_color=[["#0d1117" if i % 2 == 0 else "#161b22" for i in range(len(yt_df))]],
+        font=dict(color=["#8b949e", "#e6c06b", "#6bcb77", "#8b949e"], size=11),
+        line_color="#30363d", align="left", height=28,
+    ),
+), row=7, col=1)
+
 # ── Global layout ──────────────────────────────────────────────────────────
 now_str = datetime.now().strftime("%B %d, %Y  %H:%M")
 fig.update_layout(
@@ -468,7 +521,7 @@ fig.update_layout(
     paper_bgcolor="#0d1117",
     plot_bgcolor="#161b22",
     font=dict(color="#c9d1d9", size=12),
-    height=2100,
+    height=2500,
     barmode="group",
     legend=dict(bgcolor="rgba(22,27,34,0.8)", bordercolor="#30363d", borderwidth=1,
                 x=0.01, y=0.99, font=dict(size=10)),
