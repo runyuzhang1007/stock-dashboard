@@ -1,0 +1,13 @@
+{
+  "SPY":  { "above": 760, "below": 680 },
+  "AAPL": { "above": 300, "below": 260 },
+  "META": { "above": 680, "below": 570 },
+  "GOOG": { "above": 410, "below": 355 },
+  "MSFT": { "above": 450, "below": 390 },
+  "NVDA": { "above": 220, "below": 180 },
+  "TSM":  { "above": 430, "below": 370 },
+  "LLY":  { "above": 1050, "below": 900 },
+  "AMD":  { "above": 390, "below": 330 },
+  "MU":   { "above": 580, "below": 500 },
+  "TSLA": { "above": 320, "below": 240 }
+}
