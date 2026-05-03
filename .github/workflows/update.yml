@@ -1,0 +1,34 @@
+name: Update Stock Dashboard
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'   # every 4 hours
+  workflow_dispatch:          # manual trigger from GitHub UI
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install yfinance plotly requests pandas numpy
+
+      - name: Generate dashboard
+        run: python3 generate_dashboard.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stock_dashboard.html stock_analysis.csv
+          git diff --staged --quiet || git commit -m "Update dashboard $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
